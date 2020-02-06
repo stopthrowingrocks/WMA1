@@ -36,7 +36,9 @@ class Entity {
 	draw(){
 		const cpos = Game.posToCoords(this.pos);
 		Game.ctx.fillStyle = this.proto.color;
-		Game.ctx.fillText(this.type, cpos[0], cpos[1]);
+		let char = this.type;
+		if(this.type === ".")char = "=";
+		Game.ctx.fillText(char, cpos[0], cpos[1]);
 	}
 }
 

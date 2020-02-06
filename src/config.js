@@ -1,5 +1,5 @@
-Game.canvasSize = [400, 300];
-Game.tileSize = [16, 25];
+Game.canvasSize = [500, 350];
+Game.tileSize = [19, 27];
 Game.posToCoords = pos => pos.map((v,i)=>(v-Game.map.size[i]/2)*Game.tileSize[i]+Game.canvasSize[i]/2);
 Game.loading = 2;
 
