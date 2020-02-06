@@ -28,12 +28,19 @@ Game.KEYS = {
 	},
 	RESTART: {
 		keyCodes: [82],
+		urgent: true,
 		fn(){
+			Game.eventQueue = [];
+			Game.delayedActions = [];
 			Game.loadLevel(Game.page);
 			Game.drawAll();
 		}
 	}
-}
+};
+Game.getKey = keyCode => {
+	return Game.KEYS.find(v=>v&&v.keyCodes&&v.keyCodes.includes(keyCode));
+};
+
 
 Game.PROTO = {
 	"@": {

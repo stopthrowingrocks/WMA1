@@ -8,40 +8,40 @@ const Game = {
 	levelTitle: "",
 	dirty: [],
 	eventQueue: [],
+	urgentQueue: [],
 	delayedActions: [],
 	frameTime: 0,
 	delayed: false,
 	movePlayer(dpos){
 		if(Game.map.playerEntities.every(player=>player.canMoveBy(dpos))){
-         // Makes sure that if a player gets killed none get skipped over
+			// Makes sure that if a player gets killed none get skipped over
 			Game.map.playerEntities.slice(0).forEach(player=>player.forceMoveBy(dpos));
 		}
 		Game.drawDirty();
 	},
 	keyPress(e){
-		Game.eventQueue.push(e);
+		let key = Game.getKey(e.keyCode);
+		if(key)Game[key.urgent?"urgentQueue":"eventQueue"].push(key);
 		if(!Game.delayed)Game.update();
 	},
 	update(){
 		Game.delayed = true;
 		Game.frameTime = Date.now();
-		if(Game.delayedActions.length){
-			Game.delayedActions.forEach(v=>v());
-			Game.delayedActions=[];
+		if(Game.urgentQueue.length){
+			Game.urgentQueue.shift().fn();
+		} else if(Game.delayedActions.length){
+			const actions = Game.delayedActions;
+			Game.delayedActions = [];
+			actions.forEach(v=>v());
 			Game.drawDirty();
 		} else if(Game.eventQueue.length){
-			const e = Game.eventQueue.shift();
-			for(const i in Game.KEYS){
-				let keyObj = Game.KEYS[i];
-				if(keyObj.keyCodes.includes(e.keyCode)){
-					keyObj.fn();
-				}
-			}
+			Game.eventQueue.shift().fn();
 		}
 		if(!Game.map.playerEntities.length){
 			Game.loadLevel(Game.page + 1);
 			Game.delayedActions = [Game.drawAll];
 		}
+
 		Game.delayed = false;
 		if(Game.delayedActions.length){
 			setTimeout(Game.update, 70 + Game.frameTime - Date.now());
@@ -84,7 +84,7 @@ const Game = {
 		const level = Game.levels[levelNumber - 1]
 		Game.map = new Game.Map(level.map);
 		Game.page = levelNumber;
-		Game.levelTitle = level.title;
+		Game.levelTitle = `Level ${Game.page}: ${level.title}`;
 		Game.dirty = [];
 	},
 	drawAll(){
