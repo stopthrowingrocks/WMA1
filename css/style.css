@@ -1,14 +1,14 @@
-@font-face {
-	font-family: 'Share Tech Mono';
-	src: url('/css/ShareTechMono-Regular.ttf');
+body {
+	height: 100%;
+	margin: 0;
+	background: black;
 }
 #gm-container {
-	text-align:center;
-	border: 1px solid blue;
+	text-align: center;
 	margin: 0px;
 	padding-top: 30px;
 	padding-bottom: 60px;
-	font-family: 'Share Tech Mono', sans-serif;
+	font-family: "Share Tech Mono", monospace;
 	background: black;
 }
 #gm-title {
@@ -18,4 +18,8 @@
 #gm-level-title {
 	font-size: 30px;
 	color: #99f;
+}
+@font-face {
+	font-family: "Share Tech Mono";
+	src: url("ShareTechMono-Regular.ttf");
 }

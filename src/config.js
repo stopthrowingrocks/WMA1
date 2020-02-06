@@ -12,23 +12,23 @@ Game.DIR = {
 Game.KEYS = {
 	UP: {
 		keyCodes: [38, 87],
-		fn: ()=>Game.movePlayer(Game.DIR.UP)
+		fn(){Game.movePlayer(Game.DIR.UP)}
 	},
 	DOWN: {
 		keyCodes: [40, 83],
-		fn: ()=>Game.movePlayer(Game.DIR.DOWN)
+		fn(){Game.movePlayer(Game.DIR.DOWN)}
 	},
 	LEFT: {
 		keyCodes: [37, 65],
-		fn: ()=>Game.movePlayer(Game.DIR.LEFT)
+		fn(){Game.movePlayer(Game.DIR.LEFT)}
 	},
 	RIGHT: {
 		keyCodes: [39, 68],
-		fn: ()=>Game.movePlayer(Game.DIR.RIGHT)
+		fn(){Game.movePlayer(Game.DIR.RIGHT)}
 	},
 	RESTART: {
 		keyCodes: [82],
-		fn: ()=>{
+		fn(){
 			Game.loadLevel(Game.page);
 			Game.drawAll();
 		}

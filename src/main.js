@@ -1,4 +1,4 @@
-let Game = {
+const Game = {
 	DOM: null,
 	ctx: null,
 	map: null,
@@ -13,7 +13,8 @@ let Game = {
 	delayed: false,
 	movePlayer(dpos){
 		if(Game.map.playerEntities.every(player=>player.canMoveBy(dpos))){
-			Game.map.playerEntities.slice(0).forEach(player=>player.forceMoveBy(dpos));//Makes sure that if a player gets killed none get skipped over
+         // Makes sure that if a player gets killed none get skipped over
+			Game.map.playerEntities.slice(0).forEach(player=>player.forceMoveBy(dpos));
 		}
 		Game.drawDirty();
 	},
@@ -25,13 +26,12 @@ let Game = {
 		Game.delayed = true;
 		Game.frameTime = Date.now();
 		if(Game.delayedActions.length){
-			let actions = Game.delayedActions;
+			Game.delayedActions.forEach(v=>v());
 			Game.delayedActions=[];
-			actions.forEach(v=>v());
 			Game.drawDirty();
 		} else if(Game.eventQueue.length){
-			let e = Game.eventQueue.shift();
-			for(let i in Game.KEYS){
+			const e = Game.eventQueue.shift();
+			for(const i in Game.KEYS){
 				let keyObj = Game.KEYS[i];
 				if(keyObj.keyCodes.includes(e.keyCode)){
 					keyObj.fn();
@@ -40,7 +40,7 @@ let Game = {
 		}
 		if(!Game.map.playerEntities.length){
 			Game.loadLevel(Game.page + 1);
-			Game.delayedActions=[Game.drawAll];
+			Game.delayedActions = [Game.drawAll];
 		}
 		Game.delayed = false;
 		if(Game.delayedActions.length){
@@ -49,31 +49,39 @@ let Game = {
 			Game.update();
 		}
 	},
-	load(){
-		Game.loading--;
-		if(!Game.loading){
-			document.getElementById("load").hidden = true;
-			document.getElementById("gm-container").hidden = false;
-			
-			Game.DOM = {
-				canvas: document.getElementById("gm-canvas"),
-				levelTitle: document.getElementById("gm-level-title")
-			}
-			
-			Game.DOM.canvas.width = 400;
-			Game.DOM.canvas.height = 300;
-			Game.ctx = Game.DOM.canvas.getContext("2d");
-			Game.ctx.textBaseline = "top";
-			Game.ctx.font = "25px Share Tech Mono";
+	async init(){
+		// wait till the document is loaded
+		await rloaded;
 
-			document.onkeydown=Game.keyPress;
-			Game.loadLevel(1);
-			Game.drawAll();
+		d.getElementById("load").hidden = true;
+		d.getElementById("gm-container").hidden = false;
+
+		Game.DOM = {
+			canvas: d.getElementById("gm-canvas"),
+			levelTitle: d.getElementById("gm-level-title")
 		}
+		
+		Game.DOM.canvas.width = 400;
+		Game.DOM.canvas.height = 300;
+		Game.ctx = Game.DOM.canvas.getContext("2d", {alpha: false});
+		Game.ctx.textBaseline = "top";
+		Game.ctx.font = "25px Share Tech Mono";
+
+		d.onkeydown = Game.keyPress;
+
+		// wait till the levels have been fetched
+		Game.levels = await rlevels;
+		Game.loadLevel(1);
+
+		// don't draw until the fonts are loaded
+		await rcss;
+		Game.drawAll();
+		
+		d.body.style.background = "linear-gradient(#000, #000414)";
 	},
-	//Level Numbers are 1,2,3...
+	// Level Numbers are 1,2,3...
 	loadLevel(levelNumber){
-		let level = Game.levels[levelNumber - 1]
+		const level = Game.levels[levelNumber - 1]
 		Game.map = new Game.Map(level.map);
 		Game.page = levelNumber;
 		Game.levelTitle = level.title;
@@ -92,41 +100,12 @@ let Game = {
 	drawDirty(){
 		Game.dirty.forEach(pos=>{
 			Game.ctx.fillStyle = "black";
-			let cpos = Game.posToCoords(pos);
+			const cpos = Game.posToCoords(pos);
 			Game.ctx.fillRect(cpos[0], cpos[1], Game.tileSize[0], Game.tileSize[1]);
 			Game.map.getVisibleEntityAt(pos).draw();
 		});
 	}
 };
-(()=>{
-	let xhr = new XMLHttpRequest();
-	xhr.open("GET", "src/levels.json", true);
-	xhr.responseType = "json";
-	xhr.onload = e => {
-		if(xhr.status == 200){//If the request succeeded
-			Game.levels = xhr.response;
-			Game.load();
-		}
-	};
-	xhr.send();
-})();
-// function readJSON(path) {
-// 	var xhr = new XMLHttpRequest();
-// 	xhr.open('GET', path, true);
-// 	xhr.responseType = 'blob';
-// 	xhr.onload = function(e) { 
-// 	  if (this.status == 200) {
-// 			var file = new File([this.response], 'temp');
-// 			var fileReader = new FileReader();
-// 			fileReader.addEventListener('load', function(){
-// 				  //do stuff with fileReader.result
-// 			});
-// 			fileReader.readAsText(file);
-// 	  } 
-// 	}
-// 	xhr.send();
-// }
-
 
 /*TODO:
 	Game.map

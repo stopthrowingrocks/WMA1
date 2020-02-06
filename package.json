@@ -1,14 +1,11 @@
 {
-  "name": "wma1",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "http-server": "^0.12.1"
-  }
+	"name": "WMA1",
+	"scripts": {
+		"start": "http-server"
+	},
+	"author": "Marcus Luebke",
+	"license": "GPLv3",
+	"devDependencies": {
+		"http-server": "^0.12.1"
+	}
 }
