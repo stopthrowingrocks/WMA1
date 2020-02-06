@@ -1,6 +1,6 @@
-//All positions are wrapped to be between 0 and map.size-1
+// All positions are wrapped to be between 0 and map.size-1
 class Entity {
-	//Returns the position this.pos + dpos
+	// Returns the position this.pos + dpos
 	addPos(dpos){
 		return this.pos.map((v,i)=>{
 			v += dpos[i];
@@ -13,7 +13,7 @@ class Entity {
 			}
 		});
 	}
-	//Returns the position this.pos - dpos
+	// Returns the position this.pos - dpos
 	subtractPos(dpos){
 		return this.addPos([-dpos[0], -dpos[1]]);
 	}
@@ -34,7 +34,7 @@ class Entity {
 		return this.proto.moveInto(this, dpos, E);
 	}
 	draw(){
-		let cpos = Game.posToCoords(this.pos);
+		const cpos = Game.posToCoords(this.pos);
 		Game.ctx.fillStyle = this.proto.color;
 		Game.ctx.fillText(this.type, cpos[0], cpos[1]);
 	}
@@ -49,7 +49,7 @@ class DynamicEntity extends Entity {
 	}
 	forceMoveBy(dpos){
 		/* TODO: Add current position and next position to toDraw list */
-		//Not sure if this ordering is correct
+		// Not sure if this ordering is correct
 		Game.map.getEntitiesAt(this.addPos(dpos)).forEach(v => v.moveInto(this, dpos));
 		Game.dirty.push(this.pos);
 		this.pos = this.addPos(dpos);

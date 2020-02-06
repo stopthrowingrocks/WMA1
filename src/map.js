@@ -21,8 +21,9 @@ class Map {
 	getEntitiesAt(pos){
 		return [this.getStaticEntityAt(pos), ...this.dynamicEntities.concat(this.playerEntities).filter(v => v.pos[0] == pos[0] && v.pos[1] == pos[1])]
 	}
+	// Returns players, then dynamic elements, then the static element
 	getVisibleEntityAt(pos){
-		return this.getEntitiesAt(pos).last();//Returns players, then dynamic elements, then the static element
+		return this.getEntitiesAt(pos).last();
 	}
 	setStaticEntity(type, pos){
 		this.staticEntities[pos[1]][pos[0]] = type;
@@ -39,12 +40,12 @@ class Map {
 	kill(E){
 		E.killed = true;
 		if(E.type === "@"){
-			let index = this.playerEntities.indexOf(E);
+			const index = this.playerEntities.indexOf(E);
 			if(index != -1){
 				this.playerEntities.splice(index,1);
 			}
 		} else if(E.proto.dynamic){
-			let index = this.dynamicEntities.indexOf(E);
+			const index = this.dynamicEntities.indexOf(E);
 			if(index != -1){
 				this.dynamicEntities.splice(index,1);
 			}
