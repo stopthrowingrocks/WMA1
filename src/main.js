@@ -26,9 +26,8 @@ const Game = {
 		Game.delayed = true;
 		Game.frameTime = Date.now();
 		if(Game.delayedActions.length){
-			let actions = Game.delayedActions;
+			Game.delayedActions.forEach(v=>v());
 			Game.delayedActions=[];
-			actions.forEach(v=>v());
 			Game.drawDirty();
 		} else if(Game.eventQueue.length){
 			const e = Game.eventQueue.shift();
@@ -50,27 +49,35 @@ const Game = {
 			Game.update();
 		}
 	},
-	load(){
-		Game.loading--;
-		if(!Game.loading){
-			document.getElementById("load").hidden = true;
-			document.getElementById("gm-container").hidden = false;
+	async init(){
+		// wait till the document is loaded
+		await rloaded;
 
-			Game.DOM = {
-				canvas: document.getElementById("gm-canvas"),
-				levelTitle: document.getElementById("gm-level-title")
-			}
-			
-			Game.DOM.canvas.width = 400;
-			Game.DOM.canvas.height = 300;
-			Game.ctx = Game.DOM.canvas.getContext("2d", {alpha: false});
-			Game.ctx.textBaseline = "top";
-			Game.ctx.font = "25px Share Tech Mono";
+		d.getElementById("load").hidden = true;
+		d.getElementById("gm-container").hidden = false;
 
-			document.onkeydown = Game.keyPress;
-			Game.loadLevel(1);
-			Game.drawAll();
+		Game.DOM = {
+			canvas: d.getElementById("gm-canvas"),
+			levelTitle: d.getElementById("gm-level-title")
 		}
+		
+		Game.DOM.canvas.width = 400;
+		Game.DOM.canvas.height = 300;
+		Game.ctx = Game.DOM.canvas.getContext("2d", {alpha: false});
+		Game.ctx.textBaseline = "top";
+		Game.ctx.font = "25px Share Tech Mono";
+
+		d.onkeydown = Game.keyPress;
+
+		// wait till the levels have been fetched
+		Game.levels = await rlevels;
+		Game.loadLevel(1);
+
+		// don't draw until the fonts are loaded
+		await rcss;
+		Game.drawAll();
+		
+		d.body.style.background = "linear-gradient(#000, #000414)";
 	},
 	// Level Numbers are 1,2,3...
 	loadLevel(levelNumber){
@@ -99,18 +106,6 @@ const Game = {
 		});
 	}
 };
-(()=>{
-	const xhr = new XMLHttpRequest();
-	xhr.open("GET", "src/levels.json", true);
-	xhr.responseType = "json";
-	xhr.onload = e => {
-		if(xhr.status == 200){
-			Game.levels = xhr.response;
-			Game.load();
-		}
-	};
-	xhr.send();
-})();
 
 /*TODO:
 	Game.map

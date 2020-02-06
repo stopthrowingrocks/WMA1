@@ -2,13 +2,14 @@
 <html>
 	<head>
 		<title>We Move As One</title>
+		<link id="css" rel="stylesheet" type="text/css" href="css/style.css">
+		<script src="src/required.js"></script>
 		<script src="src/expand.js"></script>
 		<script src="src/main.js"></script>
 		<script src="src/entity.js"></script>
 		<script src="src/map.js"></script>
-		<link id="css" href="css/style.css" rel="stylesheet">
 	</head>
-	<body onload="Game.load()">
+	<body>
 		<div id="load">
 			<h2>Loading</h2>
 			<img src="https://cdn.scratch.mit.edu/scratchr2/static/__0c1805349a6fe15c01c668d3f8acd971__/images/ajax_loader_blue_48.gif">
@@ -19,5 +20,8 @@
 			<div id="gm-level-title">Title Page</div>
 		</div>
 		<script src="src/config.js"></script>
+		<script>
+			Game.init();
+		</script>
 	</body>
 </html>
