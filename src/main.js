@@ -4,14 +4,20 @@ const Game = {
 	map: null,
 	levels: [],
 	audio: [],
-	page: 0,
+	state: {
+		level: 0,
+		description: "Main Menu",
+		playing: false,
+		delayed: false,
+		menu: false,
+		updating: false
+	},
 	levelTitle: "",
 	dirty: [],
 	eventQueue: [],
 	urgentQueue: [],
 	delayedActions: [],
 	frameTime: 0,
-	delayed: false,
 	movePlayer(dpos){
 		if(Game.map.playerEntities.every(player=>player.canMoveBy(dpos))){
 			// Makes sure that if a player gets killed none get skipped over
@@ -22,14 +28,16 @@ const Game = {
 	keyPress(e){
 		let key = Game.getKey(e.keyCode);
 		if(key)Game[key.urgent?"urgentQueue":"eventQueue"].push(key);
-		if(!Game.delayed)Game.update();
+		if(!Game.state.delayed)Game.update();
 	},
 	update(){
-		Game.delayed = true;
+		Game.updating = true;
 		Game.frameTime = Date.now();
+
 		if(Game.urgentQueue.length){
 			Game.urgentQueue.shift().fn();
 		} else if(Game.delayedActions.length){
+			// Must be in this order so that delayed actions can produce further delayed actions for the next step
 			const actions = Game.delayedActions;
 			Game.delayedActions = [];
 			actions.forEach(v=>v());
@@ -38,15 +46,20 @@ const Game = {
 			Game.eventQueue.shift().fn();
 		}
 		if(!Game.map.playerEntities.length){
-			Game.loadLevel(Game.page + 1);
+			Game.loadLevel(Game.state.level + 1);
 			Game.delayedActions = [Game.drawAll];
 		}
 
-		Game.delayed = false;
+		Game.state.delayed = false;
+		Game.state.updating = false;
+		
 		if(Game.delayedActions.length){
+			Game.state.delayed = true;
 			setTimeout(Game.update, 70 + Game.frameTime - Date.now());
-		} else if(Game.eventQueue.length){
-			Game.update();
+		} else {
+			if(Game.eventQueue.length){
+				Game.update();
+			}
 		}
 	},
 	async init(){
@@ -58,11 +71,11 @@ const Game = {
 
 		Game.DOM = {
 			canvas: d.getElementById("gm-canvas"),
-			levelTitle: d.getElementById("gm-level-title")
+			description: d.getElementById("gm-description")
 		}
 		
-		Game.DOM.canvas.width = 400;
-		Game.DOM.canvas.height = 300;
+		Game.DOM.canvas.width = Game.canvasSize[0];
+		Game.DOM.canvas.height = Game.canvasSize[1];
 		Game.ctx = Game.DOM.canvas.getContext("2d", {alpha: false});
 		Game.ctx.textBaseline = "top";
 		Game.ctx.font = "25px Share Tech Mono";
@@ -80,15 +93,22 @@ const Game = {
 		d.body.style.background = "linear-gradient(#000, #000414)";
 	},
 	// Level Numbers are 1,2,3...
-	loadLevel(levelNumber){
-		const level = Game.levels[levelNumber - 1]
-		Game.map = new Game.Map(level.map);
-		Game.page = levelNumber;
-		Game.levelTitle = `Level ${Game.page}: ${level.title}`;
+	loadLevel(level){
+		console.log(level);
+		const levelMap = Game.levels[level - 1]
+		Game.map = new Game.Map(levelMap.map);
+		Game.state = {
+			level,
+			description: `Level ${level}: ${levelMap.title}`,
+			playing: true,
+			delayed: false,
+			menu: false,
+			updating: false
+		};
 		Game.dirty = [];
 	},
 	drawAll(){
-		Game.DOM.levelTitle.innerText = Game.levelTitle;
+		Game.DOM.description.innerText = Game.description;
 		Game.ctx.fillStyle = "black";
 		Game.ctx.fillRect(0,0,Game.canvasSize[0],Game.canvasSize[1]);
 		for(let y=0;y<Game.map.size[1];y++){
