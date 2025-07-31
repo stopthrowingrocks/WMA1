@@ -1,3 +1,4 @@
+import Game from "./main";
 Game.canvasSize = [500, 350];
 Game.tileSize = [19, 27];
 Game.posToCoords = pos => pos.map((v,i)=>(v-Game.map.size[i]/2)*Game.tileSize[i]+Game.canvasSize[i]/2);

@@ -1,4 +1,5 @@
-const Game = {
+import { rcss, rlevels, rloaded } from "./required";
+export const Game = {
 	DOM: null,
 	ctx: null,
 	map: null,
@@ -19,11 +20,13 @@ const Game = {
 	delayedActions: [],
 	frameTime: 0,
 	movePlayer(dpos){
-		if(Game.map.playerEntities.every(player=>player.canMoveBy(dpos))){
-			// Makes sure that if a player gets killed none get skipped over
-			Game.map.playerEntities.slice(0).forEach(player=>player.forceMoveBy(dpos));
+		if (Game.map) {
+			if(Game.map.playerEntities.every(player=>player.canMoveBy(dpos))){
+				// Makes sure that if a player gets killed none get skipped over
+				Game.map.playerEntities.slice(0).forEach(player=>player.forceMoveBy(dpos));
+			}
+			Game.drawDirty();
 		}
-		Game.drawDirty();
 	},
 	keyPress(e){
 		let key = Game.getKey(e.keyCode);
@@ -66,12 +69,12 @@ const Game = {
 		// wait till the document is loaded
 		await rloaded;
 
-		d.getElementById("load").hidden = true;
-		d.getElementById("gm-container").hidden = false;
+		document.getElementById("load").hidden = true;
+		document.getElementById("gm-container").hidden = false;
 
 		Game.DOM = {
-			canvas: d.getElementById("gm-canvas"),
-			description: d.getElementById("gm-description")
+			canvas: document.getElementById("gm-canvas"),
+			description: document.getElementById("gm-description")
 		}
 		
 		Game.DOM.canvas.width = Game.canvasSize[0];
@@ -80,7 +83,7 @@ const Game = {
 		Game.ctx.textBaseline = "top";
 		Game.ctx.font = "25px Share Tech Mono";
 
-		d.onkeydown = Game.keyPress;
+		document.onkeydown = Game.keyPress;
 
 		// wait till the levels have been fetched
 		Game.levels = await rlevels;
@@ -90,7 +93,7 @@ const Game = {
 		await rcss;
 		Game.drawAll();
 		
-		d.body.style.background = "linear-gradient(#000, #000414)";
+		document.body.style.background = "linear-gradient(#000, #000414)";
 	},
 	// Level Numbers are 1,2,3...
 	loadLevel(level){
