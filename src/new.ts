@@ -406,7 +406,6 @@ function levelToState(level: Level): GameState {
 /**
  * Cardinal directions in the form `[dy, dx]`
  */
-type PlayerAction = "UP" | "LEFT" | "DOWN" | "RIGHT";
 const KEYS = [ // There is no consistency check that KEYS has a value for every player action
   {
     name: "UP",
@@ -429,6 +428,9 @@ const KEYS = [ // There is no consistency check that KEYS has a value for every 
     keys: ["r"],
   }
 ] as const;
+type PlayerAction = "UP" | "LEFT" | "DOWN" | "RIGHT";
+type KeyName = typeof KEYS[number]["name"];
+
 const DIRS = {
   UP: {dx: 0, dy: -1},
   LEFT: {dx: -1, dy: 0},
@@ -498,36 +500,70 @@ window.addEventListener("load", async function () {
   DOM.ctx.font = "25px Share Tech Mono";
 
   const Game = await loadFirstLevel();
+  let delayedMoves: Move[] = [];
+  let lastUpdateTimestamp: number = 0;
   // Don't draw or accept key presses until the fonts have loaded
   draw(DOM, Game);
 
-  let updatePromise: Promise<any> = Promise.resolve(null);
+  const keyQueue: KeyName[] = [];
   document.addEventListener("keydown", function (e) {
-    const keyObj = KEYS.find(keyObj=>(keyObj.keys as readonly string[]).includes(e.key));
+    const keyObj = KEYS.find(keyObj => (keyObj.keys as readonly string[]).includes(e.key));
     if (!keyObj) return;
-    switch (keyObj.name) {
-      case "RESTART":
-        if (timeoutHandle) clearTimeout(timeoutHandle);
-        Game.state = levelToState(Game.level);
-        Game.actionQueue = [];
-        setTimeoutHandle(null);
-        break;
-      default:
-        Game.actionQueue.push(keyObj.name);
-        if (timeoutHandle === null) {
-          const playerAction = Game.actionQueue.shift()!;
-          const playerDir: Dir = DIRS[playerAction];
-          const playerMoveResult = playerUpdate(Game.state, playerDir);
-          if (playerMoveResult) {
-            handleUpdateResult(DOM, Game, playerMoveResult).then(value => {
+    keyQueue.push(keyObj.name);
+  });
+  //   switch (keyObj.name) {
+  //     case "RESTART":
+  //       if (timeoutHandle) clearTimeout(timeoutHandle);
+  //       Game.state = levelToState(Game.level);
+  //       Game.actionQueue = [];
+  //       setTimeoutHandle(null);
+  //       break;
+  //     default:
+  //       Game.actionQueue.push(keyObj.name);
+  //       if (timeoutHandle === null) {
+  //         const playerAction = Game.actionQueue.shift()!;
+  //         const playerDir: Dir = DIRS[playerAction];
+  //         const playerMoveResult = playerUpdate(Game.state, playerDir);
+  //         if (playerMoveResult) {
+  //           handleUpdateResult(DOM, Game, playerMoveResult).then(value => {
               
-            });
+  //           });
+  //         }
+  //       }
+  //       break;
+  //   }
+  // });
+
+  function step(timestamp: number): void {
+    const firstKey = keyQueue[0];
+    if (firstKey === "RESTART") {
+      keyQueue.shift();
+      loadLevel(Game, Game.levelNumber);
+      return draw(DOM, Game);
+    } else {
+      if (delayedMoves.length > 0) {
+        if (timestamp >= lastUpdateTimestamp + UPDATE_TIMEOUT_MS) {
+          const updateResult = delayedUpdate(Game.state, delayedMoves);
+          lastUpdateTimestamp = timestamp;
+          Game.state = updateResult.newState;
+          if (Game.state.playerEntities.length === 0) {
+            // We win the level and need to move up a level
+            loadLevel(Game, Game.levelNumber + 1);
+            return draw(DOM, Game);
+          } else {
+            delayedMoves = updateResult.delayedMoves;
           }
         }
-        break;
+      } else {
+        
+      }
     }
-  });
+  }
+
+  window.requestAnimationFrame(step);
 });
+
+declare async function delay();
 
 /**
  * Produces side effects in Game and DOM
@@ -543,12 +579,10 @@ function handleUpdateResult(DOM: DOM, Game: Game, updateResult: {
     return Promise.resolve(null);
   }
   if (updateResult.delayedMoves.length > 0) {
-    const myPromise = new Promise(resolve => {
-      setTimeout(function () {
-        const newResult = delayedUpdate(Game.state, updateResult.delayedMoves);
-        handleUpdateResult(DOM, Game, newResult);
-      }, UPDATE_TIMEOUT_MS);
-    });
+    Game.timeoutHandle = setTimeout(function () {
+      const newResult = delayedUpdate(Game.state, updateResult.delayedMoves);
+      handleUpdateResult(DOM, Game, newResult); // This can exceed call stack
+    }, UPDATE_TIMEOUT_MS);
   }
   draw(DOM, Game);
 }
