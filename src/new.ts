@@ -15,7 +15,7 @@ const floorTag = "=";
 type FloorTag = typeof floorTag;
 
 // Canonical ordering
-const staticEntityTags = ["#", "O", "X", "|", "^", "<", "v", ">", "~"] as const;
+const staticEntityTags = [" ", "#", "O", "X", "|", "^", "<", "v", ">", "~"] as const;
 type StaticEntityTag = typeof staticEntityTags[number];
 function isStaticEntityTag(s: string): s is StaticEntityTag {
   return staticEntityTags.includes(s as never);
@@ -183,6 +183,7 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
     case null: {
       const staticTag = state.staticEntityMap[movedPos.y][movedPos.x];
       switch (staticTag) {
+        case " ":
         case "#": {
           // Walls prevent movement
           return {
@@ -360,18 +361,19 @@ function getVisibleEntityAt(state: GameState, pos: Position): EntityTag {
       || floorTag;
 }
 const entityColors: {[e in EntityTag]: string} = {
-  "=": "#641",
-  "@": "#0f0",
-  "0": "#c99",
-  "#": "#fff",
-  "O": "#3df",
-  "X": "#f4b",
-  "|": "#96c",
-  "^": "#ec3",
-  "<": "#ec3",
-  "v": "#ec3",
-  ">": "#ec3",
-  "~": "#22f",
+  "=": "#502a0eff",
+  "@": "#fae441ff",
+  "0": "#983e3aff",
+  " ": "#dfdfdfff",
+  "#": "#dfdfdfff",
+  "O": "#63b9ffff",
+  "X": "#2083d3ff",
+  "|": "#9966ccff",
+  "^": "#969687ff",
+  "<": "#969687ff",
+  "v": "#969687ff",
+  ">": "#969687ff",
+  "~": "#0044ddff",
 };
 const tileWidth = 19;
 const tileHeight = 27;
@@ -453,7 +455,15 @@ const KEYS = [ // There is no consistency check that KEYS has a value for every 
   {
     name: "RESTART",
     keys: ["r"],
-  }
+  },
+  {
+    name: "LEVELUP",
+    keys: ["."],
+  },
+  {
+    name: "LEVELDOWN",
+    keys: [","],
+  },
 ] as const;
 type PlayerAction = "UP" | "LEFT" | "DOWN" | "RIGHT";
 type KeyName = typeof KEYS[number]["name"];
@@ -534,11 +544,20 @@ window.addEventListener("load", async function () {
   });
 
   function step(timestamp: number): void {
-    if (keyQueue[0] === "RESTART") {
-      keyQueue.shift();
+    const firstKey = keyQueue.shift();
+    if (firstKey === "RESTART") {
       loadLevel(Game, Game.levelNumber);
       draw(DOM, Game);
-      console.log("reloaded")
+      return;
+    }
+    if (firstKey === "LEVELUP") {
+      loadLevel(Game, Game.levelNumber + 1);
+      draw(DOM, Game);
+      return;
+    }
+    if (firstKey === "LEVELDOWN") {
+      loadLevel(Game, Game.levelNumber - 1);
+      draw(DOM, Game);
       return;
     }
 
@@ -561,22 +580,19 @@ window.addEventListener("load", async function () {
     }
 
     // We can accept player input.
-    const playerAction = keyQueue.shift();
-    if (playerAction === "RESTART") throw new Error("Unreachable code activated.");
-    if (playerAction === undefined) return;
-    const playerDir: Dir = DIRS[playerAction];
+    if (firstKey === undefined) return;
+    const playerDir = DIRS[firstKey];
     const playerMoveResult = playerUpdate(Game.state, playerDir);
     Game.lastUpdateTimestamp = timestamp;
-    if (playerMoveResult) {
-      Game.state = playerMoveResult.newState;
-      if (Game.state.playerEntities.length === 0) {
-        // We win the level and need to move up a level
-        loadLevel(Game, Game.levelNumber + 1);
-        return draw(DOM, Game);
-      }
-      Game.delayedMoves = playerMoveResult.delayedMoves;
+    if (!playerMoveResult) return;
+    Game.state = playerMoveResult.newState;
+    if (Game.state.playerEntities.length === 0) {
+      // We win the level and need to move up a level
+      loadLevel(Game, Game.levelNumber + 1);
       return draw(DOM, Game);
     }
+    Game.delayedMoves = playerMoveResult.delayedMoves;
+    return draw(DOM, Game);
   }
 
   function RAF_step(timestamp: number): void {
