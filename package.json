@@ -1,6 +1,7 @@
 {
   "name": "wma1",
   "scripts": {
+    "check": "tsc --noEmit",
     "build": "esbuild src/* --outdir=build",
     "start": "http-server"
   },

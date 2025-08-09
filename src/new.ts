@@ -14,7 +14,8 @@ function eqPos(p1: Position, p2: Position): boolean {
 const floorTag = "=";
 type FloorTag = typeof floorTag;
 
-const staticEntityTags = ["#", "~", "^", "<", "v", ">", "O", "X"] as const;
+// Canonical ordering
+const staticEntityTags = ["#", "O", "X", "|", "^", "<", "v", ">", "~"] as const;
 type StaticEntityTag = typeof staticEntityTags[number];
 function isStaticEntityTag(s: string): s is StaticEntityTag {
   return staticEntityTags.includes(s as never);
@@ -182,6 +183,13 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
     case null: {
       const staticTag = state.staticEntityMap[movedPos.y][movedPos.x];
       switch (staticTag) {
+        case "#": {
+          // Walls prevent movement
+          return {
+            type: "failure",
+            flashPositions: [movedPos],
+          };
+        }
         case "O": {
           writeStaticEntityMap(state, {tag: null, pos: movedPos});
           writeDynamicEntityMap(state, {tag: null, pos: movedPos});
@@ -196,26 +204,10 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
             type: "success",
           };
         }
-        case "~": {
-          // Entities slide on water
-          if (tag === "0") {
-            // Destroy the "0" and the "~". Pushing the rock in the water makes a lilypad to stand on.
-            writeStaticEntityMap(state, {tag: null, pos: movedPos});
-            writeDynamicEntityMap(state, {tag: null, pos: movedPos});
-            return {
-              type: "success",
-              sounds: ["sploosh"],
-            };
-          }
+        case "|": {
+          writeStaticEntityMap(state, {tag: "#", pos: movedPos});
           return {
             type: "success",
-            delayedMoves: [{
-              dir,
-              ent: {
-                tag,
-                pos: movedPos,
-              },
-            }],
           };
         }
         case "^": {
@@ -254,11 +246,26 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
             }],
           };
         }
-        case "#": {
-          // Walls prevent movement
+        case "~": {
+          // Entities slide on water
+          if (tag === "0") {
+            // Destroy the "0" and the "~". Pushing the rock in the water makes a lilypad to stand on.
+            writeStaticEntityMap(state, {tag: null, pos: movedPos});
+            writeDynamicEntityMap(state, {tag: null, pos: movedPos});
+            return {
+              type: "success",
+              sounds: ["sploosh"],
+            };
+          }
           return {
-            type: "failure",
-            flashPositions: [movedPos],
+            type: "success",
+            delayedMoves: [{
+              dir,
+              ent: {
+                tag,
+                pos: movedPos,
+              },
+            }],
           };
         }
         case null: {
@@ -356,14 +363,15 @@ const entityColors: {[e in EntityTag]: string} = {
   "=": "#641",
   "@": "#0f0",
   "0": "#c99",
-  "X": "#f4b",
   "#": "#fff",
-  "~": "#22f",
   "O": "#3df",
+  "X": "#f4b",
+  "|": "#96c",
   "^": "#ec3",
   "<": "#ec3",
   "v": "#ec3",
   ">": "#ec3",
+  "~": "#22f",
 };
 const tileWidth = 19;
 const tileHeight = 27;
