@@ -1,25 +1,29 @@
 body {
-	height: 100%;
-	margin: 0;
-	background: black;
+  height: 100%;
+  margin: 0;
+  background: black;
 }
-#gm-container {
-	text-align: center;
-	margin: 0px;
-	padding-top: 30px;
-	padding-bottom: 60px;
-	font-family: "Share Tech Mono", monospace;
-	background: black;
+.container, #gm-container {
+  text-align: center;
+  margin: 0px;
+  padding-top: 30px;
+  padding-bottom: 60px;
+  font-family: "Share Tech Mono", monospace;
+  background: black;
 }
-#gm-title {
-	font-size: 40px;
-	color: white;
+.title, #gm-title {
+  font-size: 40px;
+  color: white;
+}
+.subtitle {
+  font-size: 20px;
+  color: white;
 }
 #gm-level-title {
-	font-size: 30px;
-	color: #99f;
+  font-size: 30px;
+  color: #99f;
 }
 @font-face {
-	font-family: "Share Tech Mono";
-	src: url("ShareTechMono-Regular.ttf");
+  font-family: "Share Tech Mono";
+  src: url("ShareTechMono-Regular.ttf");
 }

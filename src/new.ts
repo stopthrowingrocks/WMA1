@@ -413,10 +413,18 @@ function posToCoords(pos: Position, state: GameState): {x: number, y: number} {
 }
 
 const canvasWidth = 500;
-const canvasHeight = 350;
+const canvasHeight = 300;
 function drawState(DOM: DOM, state: GameState): void {
   DOM.ctx.fillStyle = "black";
   DOM.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  DOM.ctx.fillStyle = "#111111";
+  let dx = tileWidth * state.width + 32;
+  let dy = tileHeight * state.height + 32;
+  DOM.ctx.fillRect(canvasWidth / 2 - dx / 2, canvasHeight / 2 - dy / 2, dx, dy);
+  DOM.ctx.fillStyle = "black";
+  dx -= 8;
+  dy -= 8;
+  DOM.ctx.fillRect(canvasWidth / 2 - dx / 2, canvasHeight / 2 - dy / 2, dx, dy);
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
       const pos: Position = {x, y};
