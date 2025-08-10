@@ -1,6 +1,6 @@
 +++
 title = "We Move As One"
-date = 2025-08-05
+date = 2025-08-09
 
 [extra]
 subtitle = "A game about killing your clones I guess."
@@ -18,9 +18,8 @@ tab_title = "We Move As One"
       <img src="https://cdn.scratch.mit.edu/scratchr2/static/__0c1805349a6fe15c01c668d3f8acd971__/images/ajax_loader_blue_48.gif">
     </div>
     <div id="gm-container" hidden>
-      <!-- <div id="gm-title">We Move As One</div> -->
       <canvas id="gm-canvas"></canvas>
-      <div id="gm-description">Title Page</div>
+      <div id="gm-level-title">It's-a good game</div>
     </div>
   </body>
 </html>
