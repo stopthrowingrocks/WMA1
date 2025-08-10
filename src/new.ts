@@ -20,7 +20,7 @@ const floorTag = "=";
 type FloorTag = typeof floorTag;
 
 // Canonical ordering
-const staticEntityTags = [" ", "#", "O", "E", "|", "^", "<", "v", ">", "~", "Q"] as const;
+const staticEntityTags = [" ", "#", "O", "X", "|", "^", "<", "v", ">", "~", "Q"] as const;
 type StaticEntityTag = typeof staticEntityTags[number];
 function isStaticEntityTag(s: string): s is StaticEntityTag {
   return staticEntityTags.includes(s as never);
@@ -210,7 +210,7 @@ function moveEntity(state: GameState, move: Move, ctxt: MoveContext): MoveResult
             type: "success",
           };
         }
-        case "E": {
+        case "X": {
           writeStaticEntityMap(state, {tag: "#", pos: movedPos});
           writeDynamicEntityMap(state, {tag: null, pos: movedPos});
           return {
@@ -394,7 +394,7 @@ const entityColors: {[e in EntityTag]: string} = {
   " ": "#dfdfdfff",
   "#": "#dfdfdfff",
   "O": "#63b9ffff",
-  "E": "#2083d3ff",
+  "X": "#2083d3ff",
   "|": "#9966ccff",
   "^": "#969687ff",
   "<": "#969687ff",
