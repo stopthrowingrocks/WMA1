@@ -26,7 +26,7 @@ const CONFIG = tseslint.config(
     "rules": {
       "no-redeclare": "off",
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           "args": "all",
           "argsIgnorePattern": "^_",

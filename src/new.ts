@@ -1,5 +1,7 @@
 import {errorLevel, Level, levels} from "./levels.js";
 
+const DEBUG = false;
+
 /**
  * A type for representing game positions.
  */
@@ -10,12 +12,15 @@ type Position = {
 function eqPos(p1: Position, p2: Position): boolean {
   return p1.x === p2.x && p1.y === p2.y;
 }
+function posToString(p: Position): string {
+  return `(${p.x}, ${p.y})`;
+}
 
 const floorTag = "=";
 type FloorTag = typeof floorTag;
 
 // Canonical ordering
-const staticEntityTags = [" ", "#", "O", "X", "|", "^", "<", "v", ">", "~"] as const;
+const staticEntityTags = [" ", "#", "O", "E", "|", "^", "<", "v", ">", "~", "Q"] as const;
 type StaticEntityTag = typeof staticEntityTags[number];
 function isStaticEntityTag(s: string): s is StaticEntityTag {
   return staticEntityTags.includes(s as never);
@@ -50,11 +55,11 @@ type MaybeDynamicEntity = {
 type EntityTag = DynamicEntityTag | StaticEntityTag | FloorTag;
 
 type GameState = {
-  width: number
-  height: number
-  staticEntityMap: (StaticEntityTag | null)[][]
-  dynamicEntityMap: (DynamicEntityTag | null)[][]
-  playerEntities: PlayerEntity[]
+  readonly width: number
+  readonly height: number
+  readonly staticEntityMap: (StaticEntityTag | null)[][]
+  readonly dynamicEntityMap: (DynamicEntityTag | null)[][]
+  readonly playerEntities: PlayerEntity[]
 };
 
 function makeEmptyMap(height: number, width: number): null[][] {
@@ -101,8 +106,8 @@ type Move = {
 };
 type MoveContext = {
   remainingMoves: Move[]
+  premoved: boolean
   beenTo?: Position[]
-  premoved?: boolean
 };
 type MoveResult = {
   type: "success"
@@ -120,14 +125,16 @@ function isValidPosition(pos: Position, state: GameState): boolean {
 }
 /**
  * Calculates the result of moving the entity to the new location. Can kill or change either `move.ent` or the entity
- * at `move.ent.pos + move.dir`. The entity being moved should be absent from `state` in its current position.
+ * at `move.ent.pos + move.dir`. If `ctxt.premoved` is set, the entity being moved is absent from `state` in its current
+ * position.
  * @param state The GameState being modified
  * @param move The entity and direction to be moved
  * @param ctxt A context containing other information. The `beenTo` property can be modified by the function. As is this
  * means multiple moves cannot be tried at a time within the function, or the context needs to be somehow captured.
  */
-function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResult {
+function moveEntity(state: GameState, move: Move, ctxt: MoveContext): MoveResult {
   const {dir, ent: {tag, pos}} = move;
+  if (DEBUG) console.log(`Moving ${move.ent.tag} at ${posToString(move.ent.pos)} by ${dirToString(move.dir)}`);
   const movedPos: Position = {
     x: pos.x + dir.dx,
     y: pos.y + dir.dy,
@@ -169,10 +176,15 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
   writeDynamicEntityMap(state, movedEnt);
   // All dynamic entities can be pushed and otherwise it can try to go there.
   switch (pushedTag) {
-    case "@":
+    case "@": {
+      return {
+        type: "failure",
+        flashPositions: [movedPos],
+      };
+    }
     case "0": {
       // We can push it
-      return executeMove(state, {
+      return moveEntity(state, {
         dir,
         ent: {
           tag: pushedTag,
@@ -198,7 +210,7 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
             type: "success",
           };
         }
-        case "X": {
+        case "E": {
           writeStaticEntityMap(state, {tag: "#", pos: movedPos});
           writeDynamicEntityMap(state, {tag: null, pos: movedPos});
           return {
@@ -251,7 +263,7 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
           // Entities slide on water
           if (tag === "0") {
             // Destroy the "0" and the "~". Pushing the rock in the water makes a lilypad to stand on.
-            writeStaticEntityMap(state, {tag: null, pos: movedPos});
+            writeStaticEntityMap(state, {tag: "Q", pos: movedPos});
             writeDynamicEntityMap(state, {tag: null, pos: movedPos});
             return {
               type: "success",
@@ -268,6 +280,11 @@ function executeMove(state: GameState, move: Move, ctxt: MoveContext): MoveResul
               },
             }],
           };
+        }
+        case "Q": {
+          return {
+            type: "success",
+          }
         }
         case null: {
           return {
@@ -293,23 +310,31 @@ function playerUpdate(state: GameState, dir: Dir): {
   sounds: SoundTag[]
 } | null {
   // Return values
-  const newState = copyState(state);
+  let newState = copyState(state);
   const delayedMoves: Move[] = [];
   const sounds: SoundTag[] = [];
 
   // Execute moves
   const moves: Move[] = state.playerEntities.map(ent => ({ent, dir}));
+  if (DEBUG) console.log("player update");
   for (let i = 0; i < moves.length; i++) {
+    const prevState = copyState(newState);
     const move: Move = moves[i];
-    const moveResult = executeMove(newState, move, {
-      remainingMoves: moves.slice(i + 1)
+    const moveResult = moveEntity(newState, move, {
+      remainingMoves: moves.slice(i + 1),
+      premoved: false,
     });
 
-    if (moveResult.type === "failure") return null; // If any move fails, the entire operation fails
+    if (moveResult.type === "failure") {
+      if (DEBUG) console.log("player move failed");
+      return null; // If any move fails, the entire operation fails
+    }
     if (moveResult.type === "reorder") {
       const moveIndex = i + 1 + moveResult.moveIndex;
+      if (DEBUG) console.log(`need to reorder player move ${moveIndex}`);
       moves.splice(i, 1);
       moves.splice(moveIndex + 1, 0, move);
+      newState = prevState; // The state might have been changed during reordering
       i--;
       continue;
     }
@@ -333,12 +358,14 @@ function delayedUpdate(state: GameState, moves: Move[]): {
   for (let i = 0; i < moves.length; i++) {
     const move: Move = moves[i];
     const testState = copyState(newState);
-    const moveResult = executeMove(testState, move, {
-      remainingMoves: moves
+    const moveResult = moveEntity(testState, move, {
+      remainingMoves: moves,
+      premoved: false,
     });
     if (moveResult.type === "failure") break;
     if (moveResult.type === "reorder") {
       // TODO. For now, just fail to satisfy the type system
+      console.error("Reordering is not supported right now.");
       break;
     }
     newState = testState;
@@ -349,9 +376,9 @@ function delayedUpdate(state: GameState, moves: Move[]): {
 }
 
 type DOM = {
-  description: HTMLElement
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
+  levelTitle: HTMLElement
 };
 
 function getVisibleEntityAt(state: GameState, pos: Position): EntityTag {
@@ -361,19 +388,20 @@ function getVisibleEntityAt(state: GameState, pos: Position): EntityTag {
       || floorTag;
 }
 const entityColors: {[e in EntityTag]: string} = {
-  "=": "#502a0eff",
+  "=": "#402411ff",
   "@": "#fae441ff",
-  "0": "#983e3aff",
+  "0": "#9d60edff",
   " ": "#dfdfdfff",
   "#": "#dfdfdfff",
   "O": "#63b9ffff",
-  "X": "#2083d3ff",
+  "E": "#2083d3ff",
   "|": "#9966ccff",
   "^": "#969687ff",
   "<": "#969687ff",
   "v": "#969687ff",
   ">": "#969687ff",
   "~": "#0044ddff",
+  "Q": "#123c1fff",
 };
 const tileWidth = 19;
 const tileHeight = 27;
@@ -387,7 +415,6 @@ function posToCoords(pos: Position, state: GameState): {x: number, y: number} {
 const canvasWidth = 500;
 const canvasHeight = 350;
 function drawState(DOM: DOM, state: GameState): void {
-  DOM.description.innerText = "<DESCRIPTION>";
   DOM.ctx.fillStyle = "black";
   DOM.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   for (let y = 0; y < state.height; y++) {
@@ -401,6 +428,7 @@ function drawState(DOM: DOM, state: GameState): void {
   }
 }
 function draw(DOM: DOM, Game: Game): void {
+  DOM.levelTitle.innerText = Game.level.title;
   drawState(DOM, Game.state);
 }
 
@@ -431,6 +459,15 @@ function levelToState(level: Level): GameState {
   }
   return state;
 }
+function stateToLevelMap(state: GameState): string[] {
+  const map = Array(state.height).fill("");
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      map[y] += getVisibleEntityAt(state, {x, y});
+    }
+  }
+  return map;
+}
 
 /**
  * Cardinal directions in the form `[dy, dx]`
@@ -451,6 +488,10 @@ const KEYS = [ // There is no consistency check that KEYS has a value for every 
   {
     name: "RIGHT",
     keys: ["d", "ArrowRight"],
+  },
+  {
+    name: "UNDO",
+    keys: ["z"],
   },
   {
     name: "RESTART",
@@ -475,6 +516,9 @@ const DIRS = {
   RIGHT: {dx: 1, dy: 0},
 } as const;
 type Dir = typeof DIRS[PlayerAction];
+function dirToString(dir: Dir): string {
+  return `(${dir.dx}, ${dir.dy})`;
+}
 
 function fetchLevel(levelNumber: number): Level {
   if (1 <= levelNumber && levelNumber <= levels.length) {
@@ -488,12 +532,13 @@ type Game = {
   levelNumber: number
   level: Level
   state: GameState
+  history: GameState[] // Does not store the current state
   delayedMoves: Move[]
   lastUpdateTimestamp: number
 }
 // I dislike that the functions loadFirstLevel and loadLevel do effectively the same computations but have different
 // formats
-function loadFirstLevel(): Game {
+function loadFirstLevel(timestamp: number): Game {
   const levelNumber = 1;
   const level = fetchLevel(levelNumber);
   const state = levelToState(level);
@@ -501,16 +546,18 @@ function loadFirstLevel(): Game {
     levelNumber,
     level,
     state,
+    history: [],
     delayedMoves: [],
-    lastUpdateTimestamp: Date.now(),
+    lastUpdateTimestamp: timestamp,
   };
 }
-function loadLevel(Game: Game, levelNumber: number): void {
+function loadLevel(Game: Game, levelNumber: number, timestamp: number): void {
   Game.levelNumber = levelNumber;
   Game.level = fetchLevel(Game.levelNumber);
   Game.state = levelToState(Game.level);
+  Game.history = [];
   Game.delayedMoves = [];
-  Game.lastUpdateTimestamp = Date.now();
+  Game.lastUpdateTimestamp = timestamp;
 }
 
 const UPDATE_TIMEOUT_MS = 70;
@@ -525,14 +572,14 @@ window.addEventListener("load", async function () {
   const DOM: DOM = {
     canvas,
     ctx: canvas.getContext("2d", {alpha: false})!,
-    description: document.getElementById("gm-description")!,
+    levelTitle: document.getElementById("gm-level-title")!,
   };
 
   DOM.ctx.textBaseline = "top";
   await document.fonts.load("25px Share Tech Mono");
   DOM.ctx.font = "25px Share Tech Mono";
 
-  const Game: Game = loadFirstLevel();
+  const Game: Game = loadFirstLevel(Date.now());
   // Don't draw or accept key presses until the fonts have loaded
   draw(DOM, Game);
 
@@ -545,22 +592,34 @@ window.addEventListener("load", async function () {
 
   function step(timestamp: number): void {
     const firstKey = keyQueue.shift();
+
+    // Handle interrupt actions before processing delayed moves or player actions
     if (firstKey === "RESTART") {
-      loadLevel(Game, Game.levelNumber);
+      loadLevel(Game, Game.levelNumber, timestamp);
       draw(DOM, Game);
       return;
     }
     if (firstKey === "LEVELUP") {
-      loadLevel(Game, Game.levelNumber + 1);
+      loadLevel(Game, Game.levelNumber + 1, timestamp);
       draw(DOM, Game);
       return;
     }
     if (firstKey === "LEVELDOWN") {
-      loadLevel(Game, Game.levelNumber - 1);
+      loadLevel(Game, Game.levelNumber - 1, timestamp);
       draw(DOM, Game);
       return;
     }
+    if (firstKey === "UNDO") {
+      if (Game.history.length > 0) {
+        Game.delayedMoves = [];
+        Game.state = Game.history.pop()!;
+        Game.lastUpdateTimestamp = timestamp;
+        draw(DOM, Game);
+      }
+      return;
+    }
 
+    // Handle if there are any delayedMoves that still need to be processed
     if (Game.delayedMoves.length > 0) {
       if (timestamp >= Game.lastUpdateTimestamp + UPDATE_TIMEOUT_MS) {
         const updateResult = delayedUpdate(Game.state, Game.delayedMoves);
@@ -568,7 +627,7 @@ window.addEventListener("load", async function () {
         Game.state = updateResult.newState;
         if (Game.state.playerEntities.length === 0) {
           // We win the level and need to move up a level
-          loadLevel(Game, Game.levelNumber + 1);
+          loadLevel(Game, Game.levelNumber + 1, timestamp);
           return draw(DOM, Game);
         }
         Game.delayedMoves = updateResult.delayedMoves;
@@ -579,16 +638,17 @@ window.addEventListener("load", async function () {
       }
     }
 
-    // We can accept player input.
     if (firstKey === undefined) return;
     const playerDir = DIRS[firstKey];
-    const playerMoveResult = playerUpdate(Game.state, playerDir);
+    const state = Game.state;
+    const playerMoveResult = playerUpdate(state, playerDir); // Does not modify state, check the fn docs
     Game.lastUpdateTimestamp = timestamp;
     if (!playerMoveResult) return;
+    Game.history.push(state);
     Game.state = playerMoveResult.newState;
     if (Game.state.playerEntities.length === 0) {
       // We win the level and need to move up a level
-      loadLevel(Game, Game.levelNumber + 1);
+      loadLevel(Game, Game.levelNumber + 1, timestamp);
       return draw(DOM, Game);
     }
     Game.delayedMoves = playerMoveResult.delayedMoves;
