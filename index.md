@@ -3,7 +3,7 @@ title = "We Move As One"
 date = 2025-08-09
 
 [extra]
-subtitle = "A game about killing your clones I guess."
+subtitle = "GAME. A game about killing your clones I guess."
 tab_title = "We Move As One"
 +++
 
